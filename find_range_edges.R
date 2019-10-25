@@ -4,17 +4,19 @@
 #  data file of survey data with headings "Year", "Lat", "Lon", "Density"
 #  an N x 4 matrix of points that define the axes used for edge analysis 
 #  4 columns represent the start lat, start lon, end lat, end lon, respectively
-#  N represents the number of axes; and this is user defined
+#  N represents the number of axes;  this is user defined
 #==============================================================================
 
 #==produces these plots:
-#   radar chart plot
 #   time series of edge at each axis
-#   map with all ranges overlaid (weight and non)
-#   folder with all years ranges plotted (weighted and non)
+#   map with all ranges overlaid (weight or non)
+#   folder with all years ranges plotted (weighted or non)
 
 #==needed checks
 # is there actually an 'edge' along the defined axis given the surveyed stations? or do the data stop there?
+# How to interpret when the range intersects with the axis more than once?
+# perhaps guidance on setting levels here?
+
 
 #==load libraries
 library(maps)
@@ -37,8 +39,8 @@ find_edges<-function(data, # data file of survey data with headings "Year", "Lat
                      sel_level=0.006, # level of contour to use for the range edge
                      plot_ind_maps=FALSE, # plot yearly maps of distributions? useful for finding good levels for contours
                      input_levels=c(0.0025,0.005,0.01), # controls the levels for individual contour plots, also good for identifying 'sel_level'
-                     input_h=2,
-                     fig_id="name_me") # bandwidth for kernel density
+                     input_h=2,# bandwidth for kernel density
+                     fig_id="name_me") # names for the figures if you have different runs in this same repo
 {
 
  #==initial calcs of kernel density
@@ -107,7 +109,6 @@ find_edges<-function(data, # data file of survey data with headings "Year", "Lat
     temp<-temp[complete.cases(temp),]
     
     #==make maps
-    #==calculate kernel densities
     if(weighted==0)
       png(paste("plots/year/MMB_dens_",fig_id,"_",years[x],".png",sep=""),height=8,width=8,res=300,units='in')
     if(weighted==1)
@@ -121,6 +122,7 @@ find_edges<-function(data, # data file of survey data with headings "Year", "Lat
     points(x=temp$Lon,y=temp$Lat,col=2,pch=16,cex=.7)
     mtext(side=3,x)
     legend("bottomleft",bty='n',col=c(1,2),pch=c(16),legend=c("Surveyed","Present"))
+    
     #==plot contours
     f<-contour(dens2[[x]],  level=input_levels, add=TRUE) 
     dev.off()
@@ -131,12 +133,12 @@ find_edges<-function(data, # data file of survey data with headings "Year", "Lat
   #=================================================================
   # calculate range edges given input axes
   #=================================================================
-
   store_edges<-NULL
   for(y in 1:length(years))
   {
    select_contour<-contourLines(dens2[[y]],levels=sel_level)
    int_temp<-NULL  
+   
    #==find the intersection of the range edge and input 'edge axes', store in store_edges
    for(x in 1:nrow(axes_ends))
    {
@@ -158,12 +160,7 @@ find_edges<-function(data, # data file of survey data with headings "Year", "Lat
    store_edges<-rbind(store_edges,int_temp)
    }
 
-  #==How to interpret when the range intersects with the axis more than once?
-  #==perhaps guidance on setting levels here?
 
-  #=================================================================
-  # plot the time series of range edge over time for each axis
-  #====================================================================
   colnames(store_edges)<-c("Year","Axis","Intersection","Lon","Lat")
   indat<-as.data.frame(store_edges)
 
@@ -190,6 +187,10 @@ edges_out<-find_edges(data,
            input_h=2,
            fig_id="two_axes")
 
+#===================================================================
+# plot the time series of lon of range edge over time for each axis
+# this is messy, but you get the idea
+#====================================================================
 
 p <- ggplot(edges_out,aes(x=Year,y=Lon)) +
   geom_line() +
@@ -222,7 +223,7 @@ edges_out<-find_edges(data,
 
 png(paste("plots/example_Lon_series_shortaxes.png",sep=""),height=8,width=8,res=300,units='in')
 
-p <- ggplot(edges_out,aes(x=Year,y=Lat)) +
+p <- ggplot(edges_out,aes(x=Year,y=Lon)) +
   geom_line() +
   facet_wrap(~Axis+Intersection )
 
